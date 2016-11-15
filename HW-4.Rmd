@@ -1,6 +1,6 @@
 ---
 title: "MATH 216 Homework 4"
-author: "WRITE YOUR NAME HERE"
+author: "Shannia Fu"
 output:
   html_document:
     toc: true
@@ -24,9 +24,9 @@ library(broom)
 
 Please indicate
 
-* Who you collaborated with:
-* Roughly how much time you spent on this HW so far:
-* The URL of the RPubs published URL [here](https://www.nhl.com/).
+* Who you collaborated with: Kyra, Brenda
+* Roughly how much time you spent on this HW so far: 2 hours
+* The URL of the RPubs published URL [here](http://rpubs.com/shannia/hw4).
 * What gave you the most trouble:
 * Any comments you have:
 
@@ -44,14 +44,66 @@ which is marked on the map with a large red dot.
 ```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4.5}
 # Perform your computations here:
 
-```
+#####COUNTY BORDERS DATA -- from lecture 15
+counties_shp <- us_counties()
+#View(counties_shp)
+counties_data <- counties_shp@data
 
+counties_polygon <- tidy(counties_shp, region="geoid")
+#View(counties_polygon)
+counties <- left_join(counties_polygon, counties_data, by=c("id"="geoid"))
+#View(counties)
+counties <- counties %>% 
+  filter(!state_name %in% c("Alaska", "Hawaii", "Puerto Rico"))
+
+#####CENTROIDS OF COUNTIES -- from tips
+centroids <- coordinates(counties_shp)
+
+#####POPULATION DATA FROM 2010 CENSUS -- http://www.socialexplorer.com/
+populations <- read.csv(file="county_population.csv",header=TRUE,sep=",")
+populations_new <- populations %>%
+  select(Geo_NAME, Geo_QName, Geo_FIPS, SE_T001_001)
+counties_data <- counties_data %>%
+  mutate(geoid = as.integer(geoid))
+counties_with_pop <- left_join(counties_data, populations_new, by=c("geoid"="Geo_FIPS")) %>%
+  filter(!state_name %in% c("Alaska", "Hawaii", "Puerto Rico"))
+all_county_data <- cbind(centroids, counties_data)
+all_county_data <- left_join(counties_with_pop, all_county_data, by="geoid")
+condensed_counties <- all_county_data %>%
+  mutate(long = `1`) %>%
+  mutate(lat = `2`) %>%
+  mutate(population = SE_T001_001) %>%
+  select(-`1`, -`2`, -SE_T001_001)
+#Virginia missing data
+condensed_counties$population[is.na(condensed_counties$population)] <- 1081726
+with_weighted_distances <- condensed_counties %>%
+  mutate(weighted_long = long * population) %>%
+  mutate(weighted_lat = lat * population)
+
+
+hub_x_coord <- sum(with_weighted_distances$weighted_long)/sum(with_weighted_distances$population)
+hub_y_coord <- sum(with_weighted_distances$weighted_lat)/sum(with_weighted_distances$population)
+
+coords <- paste("The coordinates of the hub are ", round(hub_x_coord,3), ", ", round(hub_y_coord,3), ".", sep="")
+coords
+
+
+counties <- counties %>% 
+  filter(!state_name %in% c("Alaska", "Hawaii", "Puerto Rico")) %>% 
+  mutate(distance = sqrt((long-hub_x_coord)^2 + (lat-hub_y_coord)^2))
+# ggplot(counties, aes(x=long, y=lat, group=group)) +
+#   geom_path() +
+#   coord_map()
+
+
+```
+Based on all the data, the best place to create the new hub is in Texas Township, MO. This is the "center of mass" of population in the contiguous US.
 
 ```{r, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4.5}
 # Here is a template of a ggplot call; feel free to change this to suit your
 # needs. Once your computations above are complete, set the eval=TRUE on the
 # line above to tell R Markdown to run this code block.
-ggplot(data=geo_data, aes(x=long, y=lat, group=group, fill=distance)) +
+center_plot <- ggplot(data=counties, aes(x=long, y=lat, group=group, fill=distance)) +
   # Plot choropleth polygons, low -> high being colored white -> dark green
   geom_polygon() +
   scale_fill_gradient(low="white", high="darkgreen") + 
@@ -59,8 +111,9 @@ ggplot(data=geo_data, aes(x=long, y=lat, group=group, fill=distance)) +
   geom_path(size=0.1) +
   # Mark hub
   annotate("point", x=hub_x_coord, y=hub_y_coord, col="red", size=5) +
-  # Correct aspect ratio for map
-  coord_map()
+  coord_map() +
+  labs(title = "Map of distances from New Hub in Texas Township, MO")
+center_plot
 ```
 
 
