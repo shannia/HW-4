@@ -99,7 +99,7 @@ counties <- counties %>%
 ```
 Based on all the data, the best place to create the new hub is in Texas Township, MO. This is the "center of mass" of population in the contiguous US.
 
-```{r, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4.5}
+```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=4.5}
 # Here is a template of a ggplot call; feel free to change this to suit your
 # needs. Once your computations above are complete, set the eval=TRUE on the
 # line above to tell R Markdown to run this code block.
